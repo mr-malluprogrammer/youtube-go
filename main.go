@@ -3,61 +3,48 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
+
+	"github.com/gorilla/mux"
 )
 
-type Book struct {
-	Title  string `json:"title"`
-	Author string `json:"author"`
-	Pages  int    `json:"pages"`
+type Book struct{
+	ID string	`json:"id"`
+	ISB	string	`json:"isb"`
+	Name string	`json:"name"`
+	Author	*Author	`json:"author"`
 }
 
-func Hello(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/hello" {
-		http.Error(w, "404 page not found!", http.StatusNotFound)
-		return
-	}
-	if r.Method != "GET" {
-		http.Error(w, "method not accepted!", http.StatusNotFound)
-		return
-	}
-	w.Header().Set("Content-Type", "text/html")
-	w.Write([]byte("<h1 style='color: steelblue'>Hello Mr.MalluProgrammer in hello page</h1>"))
+type Author struct{
+	FirstName	string	`json:"fName"`
+	LastName	string	`json:"lName"`
 }
 
-func GetBook(w http.ResponseWriter, r *http.Request) {
+var books []Book
+
+func getBooks(w http.ResponseWriter, r *http.Request){
 	w.Header().Set("Content-Type", "application/json")
-	book := Book{
-		Title:  "The Gunslinger",
-		Author: "Mr.MalluProgrammer",
-		Pages:  12,
-	}
-	json.NewEncoder(w).Encode(book)
-}
-
-func Formhandler(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseForm(); err != nil {
-		fmt.Fprintf(w, "Error in parsing the form: %v", err)
-		return
-	}
-
-	if r.Method != "POST" {
-		http.Error(w, "method not accepted!", http.StatusNotFound)
-		return
-	}
-
-	fmt.Fprintf(w, "POST request successful\n")
-	firstName := r.FormValue("fname")
-	lastName := r.FormValue("lname")
-	fmt.Fprintf(w, "First Name : %s\nLast Name : %s", firstName, lastName)
+	json.NewEncoder(w).Encode(books)
+	
 }
 
 func main() {
-	filePath := http.FileServer(http.Dir("./html"))
-	http.Handle("/", filePath)
-	http.HandleFunc("/hello", Hello)
-	http.HandleFunc("/form", Formhandler)
-	http.HandleFunc("/book", GetBook)
-	log.Fatal(http.ListenAndServe(":5100", nil))
+	r := mux.NewRouter()
+
+	jsonFile, err := os.Open("sample.json")
+	if(err!=nil){
+		fmt.Println(err)
+	}
+
+	byteValue, _ := ioutil.ReadAll(jsonFile)
+	json.Unmarshal(byteValue, &books)
+
+
+	r.HandleFunc("/books", getBooks).Methods("GET")
+
+	log.Fatal(http.ListenAndServe(":5020",r))
+
 }
